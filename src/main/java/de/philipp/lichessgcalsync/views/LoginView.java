@@ -1,36 +1,38 @@
 package de.philipp.lichessgcalsync.views;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
+import de.philipp.lichessgcalsync.service.GoogleCalendarService;
+
 @Route("login")
-@PageTitle("Login")
 @AnonymousAllowed
-public class LoginView extends VerticalLayout implements BeforeEnterObserver {
+public class LoginView extends VerticalLayout {
 
-    // URL that Spring Security uses to connect to Google services
-    private static final String GOOGLE_OAUTH_URL = "/oauth2/authorization/google";
-    
-    public LoginView() {
-        // Create buttons for Google and Lichess logins
-        Button googleLoginButton = new Button("Login with Google");
-        Button lichessLoginButton = new Button("Login with Lichess");
+    private String oauthUrl;
 
-        // Add click listeners to navigate to the respective OAuth URLs
-        googleLoginButton.addClickListener(event -> {
-            getUI().ifPresent(ui -> ui.getPage().setLocation(GOOGLE_OAUTH_URL));
-        });
+	public LoginView(GoogleCalendarService googleCalendarService) {
+		TextField lichessUsername = new TextField();
 
-        add(googleLoginButton, lichessLoginButton);
-    }
-	
-	@Override
-    public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-		// TODO
-    }
+		// Set up the login button
+		Button loginButton = new Button("Login with Google", event -> UI.getCurrent().getPage().setLocation(oauthUrl));
+
+		try {
+			googleCalendarService.getCredentials();
+			// Retrieve the OAuth URL and assign it to the instance variable
+//			oauthUrl = googleCalendarService.getCredentials2();
+			System.out.println("OAuth URL: " + oauthUrl);
+		} catch (IOException | GeneralSecurityException e) {
+			e.printStackTrace();
+			// You might want to add error handling here
+		}
+		add(lichessUsername, loginButton);
+	}
 }

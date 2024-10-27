@@ -16,7 +16,7 @@ import com.vaadin.flow.server.VaadinServletRequest;
 import jakarta.annotation.security.PermitAll;
 
 
-@Route("")
+@Route("mainold")
 @PermitAll
 public class MainView extends VerticalLayout {
 
