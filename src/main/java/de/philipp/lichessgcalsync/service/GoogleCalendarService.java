@@ -15,15 +15,14 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeRequestUrl;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.DateTime;
-import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
@@ -36,8 +35,14 @@ public class GoogleCalendarService {
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
     private static final List<String> SCOPES = Collections.singletonList("https://www.googleapis.com/auth/calendar.readonly");
     private static final String CREDENTIALS_FILE_PATH = "classpath:credentials.json";
+    
+    private static final String REDIRECT_URI = "http://localhost:8080/callback";
+    
+    public record GoogleCallback(Credential credential, GoogleAuthorizationCodeRequestUrl redirectUri) {};
+    
+    private GoogleAuthorizationCodeFlow flow;
 
-    public Credential getCredentials() throws IOException, GeneralSecurityException {
+    public GoogleAuthorizationCodeFlow initFlow() throws IOException, GeneralSecurityException {
     	ResourceLoader resourceLoader = new DefaultResourceLoader();
     	Resource resource = resourceLoader.getResource(CREDENTIALS_FILE_PATH);
     	InputStream in = resource.getInputStream();
@@ -47,41 +52,22 @@ public class GoogleCalendarService {
         }
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+        this.flow = new GoogleAuthorizationCodeFlow.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(), JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+//                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
         
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-        //returns an authorized Credential object.
-        return credential;
+        return flow;
     }
     
-    public String getCredentials2() throws IOException, GeneralSecurityException {
-    	ResourceLoader resourceLoader = new DefaultResourceLoader();
-    	Resource resource = resourceLoader.getResource(CREDENTIALS_FILE_PATH);
-    	InputStream in = resource.getInputStream();
-    	
-        if (in == null) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-        }
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(), JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-                .setAccessType("offline")
-                .build();
-        
-        String redirectUri = "http://localhost:8888/Callback";
-        return flow.newAuthorizationUrl().setRedirectUri(redirectUri).build();
+    public String getAuthURI() {
+    	return flow.newAuthorizationUrl().setRedirectUri(REDIRECT_URI).build();
     }
 
-    public List<Event> getUpcomingEvents() throws IOException, GeneralSecurityException {
+    public List<Event> getUpcomingEvents(Credential credentials) throws IOException, GeneralSecurityException {
         Calendar service = new Calendar.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(), JSON_FACTORY, getCredentials())
+                GoogleNetHttpTransport.newTrustedTransport(), JSON_FACTORY, credentials)
                 .setApplicationName(APPLICATION_NAME)
                 .build();
 
@@ -96,6 +82,11 @@ public class GoogleCalendarService {
         return events.getItems();
     }
     
+    public Credential getCredentialsFromCode(String code) throws Exception {
+        TokenResponse tokenResponse = flow.newTokenRequest(code).setRedirectUri(REDIRECT_URI).execute();
+        return flow.createAndStoreCredential(tokenResponse, "user");
+    }
+    
 	public void logout() throws IOException {
 		File tokenDirectory = new File(TOKENS_DIRECTORY_PATH);
 		if (tokenDirectory.exists()) {
@@ -105,5 +96,9 @@ public class GoogleCalendarService {
 				}
 			}
 		}
+	}
+	
+	public GoogleAuthorizationCodeFlow getFlow() {
+		return this.flow;
 	}
 }

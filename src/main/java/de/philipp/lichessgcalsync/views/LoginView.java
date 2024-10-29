@@ -21,18 +21,16 @@ public class LoginView extends VerticalLayout {
 	public LoginView(GoogleCalendarService googleCalendarService) {
 		TextField lichessUsername = new TextField();
 
-		// Set up the login button
-		Button loginButton = new Button("Login with Google", event -> UI.getCurrent().getPage().setLocation(oauthUrl));
-
 		try {
-			googleCalendarService.getCredentials();
-			// Retrieve the OAuth URL and assign it to the instance variable
-//			oauthUrl = googleCalendarService.getCredentials2();
+			googleCalendarService.initFlow();
+			oauthUrl = googleCalendarService.getAuthURI();
 			System.out.println("OAuth URL: " + oauthUrl);
 		} catch (IOException | GeneralSecurityException e) {
 			e.printStackTrace();
 			// You might want to add error handling here
 		}
+
+		Button loginButton = new Button("Login with Google", event -> UI.getCurrent().getPage().setLocation(oauthUrl));
 		add(lichessUsername, loginButton);
 	}
 }
