@@ -33,7 +33,7 @@ public class GoogleCalendarService {
     private static final String APPLICATION_NAME = "Google Calendar API Java Quickstart";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
-    private static final List<String> SCOPES = Collections.singletonList("https://www.googleapis.com/auth/calendar.readonly");
+    private static final List<String> SCOPES = Collections.singletonList("https://www.googleapis.com/auth/calendar.readonly3");
     private static final String CREDENTIALS_FILE_PATH = "classpath:credentials.json";
     
     private static final String REDIRECT_URI = "http://localhost:8080/callback";
@@ -41,8 +41,13 @@ public class GoogleCalendarService {
     public record GoogleCallback(Credential credential, GoogleAuthorizationCodeRequestUrl redirectUri) {};
     
     private GoogleAuthorizationCodeFlow flow;
+    
+    
+	public GoogleCalendarService() {
+	}
 
     public GoogleAuthorizationCodeFlow initFlow() throws IOException, GeneralSecurityException {
+    	System.out.println("initFlow2");
     	ResourceLoader resourceLoader = new DefaultResourceLoader();
     	Resource resource = resourceLoader.getResource(CREDENTIALS_FILE_PATH);
     	InputStream in = resource.getInputStream();
@@ -81,6 +86,11 @@ public class GoogleCalendarService {
 
         return events.getItems();
     }
+    
+	public void getCalendars(Credential credentials) throws IOException, GeneralSecurityException {
+		
+	}
+        		                
     
     public Credential getCredentialsFromCode(String code) throws Exception {
         TokenResponse tokenResponse = flow.newTokenRequest(code).setRedirectUri(REDIRECT_URI).execute();
