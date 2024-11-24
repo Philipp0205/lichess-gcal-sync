@@ -45,7 +45,6 @@ public class GoogleCalendarService2 {
 		return googleCalendar.events().list(calendarId).execute();
 	}
 
-
     /**
      * Returns an event.
      *

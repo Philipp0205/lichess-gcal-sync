@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.services.calendar.Calendar.CalendarList;
+import com.google.api.services.calendar.model.CalendarListEntry;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
@@ -19,7 +22,7 @@ import de.philipp.lichessgcalsync.config.GoogleCalendarConfig;
 import de.philipp.lichessgcalsync.service.GoogleCalendarService2;
 import de.philipp.lichessgcalsync.service.LichessService;
 
-@Route("callback")
+@Route(value = "callback", layout = MainLayout.class)
 @PageTitle("Lichess Callback")
 @AnonymousAllowed
 public class CallbackView2 extends VerticalLayout implements BeforeEnterObserver {
@@ -31,13 +34,17 @@ public class CallbackView2 extends VerticalLayout implements BeforeEnterObserver
 	private GoogleCalendarService2 googleCalendarService;
 	private GoogleAuthorizationService googleAuthorizationService;
 	private Credential credentials;
-	GoogleCalendarConfig googleCalendarConfig;
+	private GoogleCalendarConfig googleCalendarConfig;
+	private Select<CalendarListEntry> calendarSelect;
 
 	public CallbackView2(GoogleCalendarService2 googleCalendarService,
 			GoogleAuthorizationService googleAuthorizationService, GoogleCalendarConfig googleCalendarConfig) {
 		this.googleAuthorizationService = googleAuthorizationService;
 		this.googleCalendarService = googleCalendarService;
 		this.googleCalendarConfig = googleCalendarConfig;
+		
+		calendarSelect = new Select<>();
+		add(calendarSelect);
 	}
 
 	@Override
@@ -52,12 +59,26 @@ public class CallbackView2 extends VerticalLayout implements BeforeEnterObserver
 
 	        VaadinSession.getCurrent().setAttribute("code", code);
 
-	        try {
-	            Credential credentialsFromCode = googleAuthorizationService.createCredentialsFromCode(code); // Exchange code for tokens
-	            googleAuthorizationService.googleCredentials();
-	            googleCalendarConfig.googleCalendar();
-	            getEvents();
-	        } catch (Exception e) {
+			try {
+				Credential googleCredentials = googleAuthorizationService.googleCredentials();
+				if (googleCredentials == null) {
+					System.out.println("No credentials found. Creating new credentials.");
+					googleCredentials = googleAuthorizationService.createCredentialsFromCode(code);
+				}
+				
+				if (googleCredentials != null) {
+					System.out.println("Authorization successful.");
+					CalendarList calendars = googleCalendarService.getCalendars();
+					List<CalendarListEntry> items = calendars.list().execute().getItems();
+					calendarSelect.setItems(items);
+			        calendarSelect.setItemLabelGenerator(CalendarListEntry::getSummary);
+			        if (!items.isEmpty()) {
+			            calendarSelect.setValue(items.get(0));
+			        }
+				} else {
+					System.out.println("Authorization failed.");
+				}
+			} catch (Exception e) {
 	            System.out.println("Authorization failed.");
 	            e.printStackTrace();
 	        }
